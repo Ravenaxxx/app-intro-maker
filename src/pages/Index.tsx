@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { Clapperboard, Sparkles } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { Clapperboard, Sparkles, X } from "lucide-react";
 import { UploadZone } from "@/components/UploadZone";
 import { VideoLibrary } from "@/components/VideoLibrary";
 import { AdVideoSection } from "@/components/AdVideoSection";
@@ -13,7 +13,6 @@ interface Video {
   url: string;
   thumbnail?: string;
 }
-
 const Index = () => {
   const [libraryVideos, setLibraryVideos] = useState<Video[]>([]);
   const [selectedLibraryVideoId, setSelectedLibraryVideoId] = useState<string | null>(null);
@@ -21,7 +20,8 @@ const Index = () => {
   const [previewVideo, setPreviewVideo] = useState<Video | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
-
+  const [isAdVideoPlaying, setIsAdVideoPlaying] = useState(false);
+  const adVideoRef = useRef<HTMLVideoElement>(null);
   const handleLibraryUpload = useCallback((files: File[]) => {
     const newVideos = files.map((file) => ({
       id: crypto.randomUUID(),
@@ -160,14 +160,53 @@ const Index = () => {
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">
                     Vidéo publicitaire
                   </p>
-                  <div className="aspect-video bg-muted rounded-xl overflow-hidden">
+                  <div className="relative aspect-video bg-muted rounded-xl overflow-hidden">
                     {adVideo ? (
-                      <video
-                        src={adVideo.url}
-                        className="w-full h-full object-cover"
-                        muted
-                        playsInline
-                      />
+                      <>
+                        <video
+                          ref={adVideoRef}
+                          src={adVideo.url}
+                          className="w-full h-full object-cover cursor-pointer"
+                          muted
+                          playsInline
+                          onClick={() => {
+                            if (adVideoRef.current) {
+                              if (adVideoRef.current.paused) {
+                                adVideoRef.current.play();
+                                setIsAdVideoPlaying(true);
+                              } else {
+                                adVideoRef.current.pause();
+                                setIsAdVideoPlaying(false);
+                              }
+                            }
+                          }}
+                          onPlay={() => setIsAdVideoPlaying(true)}
+                          onPause={() => setIsAdVideoPlaying(false)}
+                          onEnded={() => setIsAdVideoPlaying(false)}
+                        />
+                        {isAdVideoPlaying && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (adVideoRef.current) {
+                                adVideoRef.current.pause();
+                                adVideoRef.current.currentTime = 0;
+                                setIsAdVideoPlaying(false);
+                              }
+                            }}
+                            className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-background/80 backdrop-blur-sm border border-border hover:bg-destructive hover:border-destructive flex items-center justify-center transition-all animate-fade-in"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!isAdVideoPlaying && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="text-xs text-muted-foreground bg-background/60 px-2 py-1 rounded">
+                              Cliquez pour lire
+                            </span>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
                         Uploadez une vidéo
