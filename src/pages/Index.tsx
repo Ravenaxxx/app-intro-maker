@@ -21,6 +21,7 @@ const Index = () => {
   const [previewVideo, setPreviewVideo] = useState<Video | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [exportStage, setExportStage] = useState("");
   const [isAdVideoPlaying, setIsAdVideoPlaying] = useState(false);
   const adVideoRef = useRef<HTMLVideoElement>(null);
   const handleLibraryUpload = useCallback((files: File[]) => {
@@ -61,7 +62,10 @@ const Index = () => {
         selectedVideo.url,
         adVideo.url,
         "/croix.svg",
-        (progress) => setExportProgress(progress)
+        (progress, stage) => {
+          setExportProgress(progress);
+          if (stage) setExportStage(stage);
+        }
       );
 
       downloadBlob(mergedBlob, `fusion-${Date.now()}.mp4`);
@@ -77,6 +81,7 @@ const Index = () => {
     } finally {
       setIsExporting(false);
       setExportProgress(0);
+      setExportStage("");
     }
   }, [selectedLibraryVideoId, adVideo, libraryVideos]);
 
@@ -236,6 +241,7 @@ const Index = () => {
             {/* Export */}
             <ExportProgress
               progress={exportProgress}
+              stage={exportStage}
               isExporting={isExporting}
               onExport={handleExport}
               disabled={!canExport}
