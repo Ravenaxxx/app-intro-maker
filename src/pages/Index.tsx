@@ -6,6 +6,7 @@ import { AdVideoSection } from "@/components/AdVideoSection";
 import { VideoPreviewModal } from "@/components/VideoPreviewModal";
 import { ExportProgress } from "@/components/ExportProgress";
 import { toast } from "sonner";
+import { mergeVideosWithOverlay, downloadBlob } from "@/lib/videoProcessor";
 
 interface Video {
   id: string;
@@ -42,27 +43,42 @@ const Index = () => {
     toast.success("Vidéo publicitaire chargée");
   }, []);
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (!selectedLibraryVideoId || !adVideo) return;
+
+    const selectedVideo = libraryVideos.find(v => v.id === selectedLibraryVideoId);
+    if (!selectedVideo) return;
 
     setIsExporting(true);
     setExportProgress(0);
 
-    // Simulate export progress
-    const interval = setInterval(() => {
-      setExportProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsExporting(false);
-          toast.success("Vidéo exportée avec succès !", {
-            description: "La fusion a été réalisée et le fichier est prêt.",
-          });
-          return 100;
-        }
-        return prev + Math.random() * 15;
+    try {
+      toast.info("Chargement de FFmpeg...", {
+        description: "Préparation du traitement vidéo",
       });
-    }, 500);
-  }, [selectedLibraryVideoId, adVideo]);
+
+      const mergedBlob = await mergeVideosWithOverlay(
+        selectedVideo.url,
+        adVideo.url,
+        "/croix.svg",
+        (progress) => setExportProgress(progress)
+      );
+
+      downloadBlob(mergedBlob, `fusion-${Date.now()}.mp4`);
+
+      toast.success("Vidéo exportée avec succès !", {
+        description: "La fusion a été réalisée et le fichier est téléchargé.",
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Erreur lors de l'export", {
+        description: "Une erreur est survenue pendant la fusion vidéo.",
+      });
+    } finally {
+      setIsExporting(false);
+      setExportProgress(0);
+    }
+  }, [selectedLibraryVideoId, adVideo, libraryVideos]);
 
   const selectedLibraryVideo = libraryVideos.find(
     (v) => v.id === selectedLibraryVideoId
