@@ -72,6 +72,13 @@ export async function loadFFmpeg(
     
     onProgress?.(10, "Chargement du core FFmpeg...");
     const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
+
+    // Important: without the worker, ffmpeg.load() may hang during init in some browsers.
+    onProgress?.(15, "Chargement du worker FFmpeg...");
+    const workerURL = await toBlobURL(
+      `${baseURL}/ffmpeg-core.worker.js`,
+      "text/javascript"
+    );
     
     onProgress?.(20, "Chargement du module WASM...");
     const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
@@ -79,6 +86,7 @@ export async function loadFFmpeg(
     onProgress?.(30, "Initialisation de FFmpeg...");
     await ffmpeg.load({
       coreURL,
+      workerURL,
       wasmURL,
     });
 
