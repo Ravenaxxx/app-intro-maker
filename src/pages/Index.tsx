@@ -61,7 +61,7 @@ const Index = () => {
       const mergedBlob = await mergeVideosWithOverlay(
         selectedVideo.url,
         adVideo.url,
-        "/croix.svg",
+        "/croix.svg", // SVG will be converted to PNG internally
         (progress, stage) => {
           setExportProgress(progress);
           if (stage) setExportStage(stage);
