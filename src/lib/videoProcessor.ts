@@ -68,20 +68,36 @@ export async function loadFFmpeg(
 
     onProgress?.(5, "Téléchargement de FFmpeg...");
 
-    // Use the umd version which doesn't require a separate worker file
+    // Use the UMD build. Unlike ESM, UMD provides a worker file we can reference.
     const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
     
     onProgress?.(10, "Chargement du core FFmpeg...");
     const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
+
+    // In UMD, the worker exists; passing it avoids hangs during init in some browsers.
+    onProgress?.(15, "Chargement du worker FFmpeg...");
+    const workerURL = await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, "text/javascript");
     
     onProgress?.(20, "Chargement du module WASM...");
     const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
     
     onProgress?.(30, "Initialisation de FFmpeg...");
-    await ffmpeg.load({
-      coreURL,
-      wasmURL,
-    });
+
+    // If load hangs, we want an explicit error rather than an infinite 30% state.
+    const LOAD_TIMEOUT_MS = 60_000;
+    await Promise.race([
+      ffmpeg.load({
+        coreURL,
+        wasmURL,
+        workerURL,
+      }),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("FFmpeg init timeout (60s).")),
+          LOAD_TIMEOUT_MS
+        )
+      ),
+    ]);
 
     onProgress?.(35, "FFmpeg prêt");
     return ffmpeg;
