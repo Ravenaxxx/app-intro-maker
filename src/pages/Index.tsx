@@ -75,8 +75,16 @@ const Index = () => {
       });
     } catch (error) {
       console.error("Export error:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "Erreur inconnue";
+
       toast.error("Erreur lors de l'export", {
-        description: "Une erreur est survenue pendant la fusion vidéo.",
+        description: message,
       });
     } finally {
       setIsExporting(false);
