@@ -68,8 +68,10 @@ export async function loadFFmpeg(
 
     onProgress?.(5, "Téléchargement de FFmpeg...");
 
-    // Use the UMD build. Unlike ESM, UMD provides a worker file we can reference.
-    const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+    // Use the UMD build.
+    // Note: Some environments intermittently fail with unpkg ("failed to import ffmpeg-core.js").
+    // jsDelivr is generally more reliable for worker/wasm delivery.
+    const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
     
     onProgress?.(10, "Chargement du core FFmpeg...");
     const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
@@ -85,19 +87,26 @@ export async function loadFFmpeg(
 
     // If load hangs, we want an explicit error rather than an infinite 30% state.
     const LOAD_TIMEOUT_MS = 60_000;
-    await Promise.race([
-      ffmpeg.load({
-        coreURL,
-        wasmURL,
-        workerURL,
-      }),
-      new Promise((_, reject) =>
-        setTimeout(
-          () => reject(new Error("FFmpeg init timeout (60s).")),
-          LOAD_TIMEOUT_MS
-        )
-      ),
-    ]);
+    const loadWithTimeout = (opts: { coreURL: string; wasmURL: string; workerURL?: string }) =>
+      Promise.race([
+        ffmpeg!.load(opts),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("FFmpeg init timeout (60s).")),
+            LOAD_TIMEOUT_MS
+          )
+        ),
+      ]);
+
+    // Primary attempt: load with explicit worker URL.
+    // Fallback: some browsers/CDN combinations behave better without passing workerURL.
+    try {
+      await loadWithTimeout({ coreURL, wasmURL, workerURL });
+    } catch (e) {
+      console.warn("[FFmpeg] load() failed with workerURL, retrying without workerURL", e);
+      onProgress?.(31, "Retry sans worker...");
+      await loadWithTimeout({ coreURL, wasmURL });
+    }
 
     onProgress?.(35, "FFmpeg prêt");
     return ffmpeg;
