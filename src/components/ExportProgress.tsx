@@ -54,7 +54,7 @@ export const ExportProgress = forwardRef<HTMLDivElement, ExportProgressProps>(({
       )}
       
       <p className="text-xs text-muted-foreground mt-4 text-center">
-        Format de sortie: MP4 compressé
+        Format de sortie: WebM (natif navigateur)
       </p>
     </div>
   );

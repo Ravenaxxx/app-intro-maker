@@ -6,7 +6,7 @@ import { AdVideoSection } from "@/components/AdVideoSection";
 import { VideoPreviewModal } from "@/components/VideoPreviewModal";
 import { ExportProgress } from "@/components/ExportProgress";
 import { toast } from "sonner";
-import { mergeVideosWithOverlay, downloadBlob } from "@/lib/videoProcessor";
+import { mergeVideosNative, downloadBlob } from "@/lib/nativeVideoProcessor";
 
 interface Video {
   id: string;
@@ -54,21 +54,21 @@ const Index = () => {
     setExportProgress(0);
 
     try {
-      toast.info("Chargement de FFmpeg...", {
-        description: "Préparation du traitement vidéo",
+      toast.info("Démarrage de la fusion...", {
+        description: "Traitement en cours dans le navigateur",
       });
 
-      const mergedBlob = await mergeVideosWithOverlay(
+      const mergedBlob = await mergeVideosNative(
         selectedVideo.url,
         adVideo.url,
-        "/croix.svg", // SVG will be converted to PNG internally
+        "/croix.svg",
         (progress, stage) => {
           setExportProgress(progress);
           if (stage) setExportStage(stage);
         }
       );
 
-      downloadBlob(mergedBlob, `fusion-${Date.now()}.mp4`);
+      downloadBlob(mergedBlob, `fusion-${Date.now()}.webm`);
 
       toast.success("Vidéo exportée avec succès !", {
         description: "La fusion a été réalisée et le fichier est téléchargé.",
