@@ -247,14 +247,14 @@ export async function mergeVideosNative(
 
   onProgress?.(30, "Enregistrement de la 1ère vidéo...");
 
-  // Process first video
+  // Process first video (without cross overlay)
   launchVideo.muted = false;
   await processVideoSegment(
     launchVideo,
     ctx,
     canvasWidth,
     canvasHeight,
-    crossImg,
+    undefined, // No overlay on launch video
     () => updateProgress(launchVideo, 0)
   );
   launchVideo.muted = true;
