@@ -85,6 +85,90 @@ function drawFrame(
   }
 }
 
+// Draw a single image frame to canvas with optional overlay
+function drawImageFrame(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  canvasWidth: number,
+  canvasHeight: number,
+  overlayImg?: HTMLImageElement
+) {
+  // Clear canvas
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  // Calculate scaling to fit image in canvas while maintaining aspect ratio
+  const imageAspect = image.width / image.height;
+  const canvasAspect = canvasWidth / canvasHeight;
+
+  let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+
+  if (imageAspect > canvasAspect) {
+    drawWidth = canvasWidth;
+    drawHeight = canvasWidth / imageAspect;
+    offsetX = 0;
+    offsetY = (canvasHeight - drawHeight) / 2;
+  } else {
+    drawHeight = canvasHeight;
+    drawWidth = canvasHeight * imageAspect;
+    offsetX = (canvasWidth - drawWidth) / 2;
+    offsetY = 0;
+  }
+
+  ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+
+  // Draw overlay in top-right corner
+  if (overlayImg) {
+    const overlaySize = 48;
+    const margin = 20;
+    ctx.drawImage(
+      overlayImg,
+      canvasWidth - overlaySize - margin,
+      margin,
+      overlaySize,
+      overlaySize
+    );
+  }
+}
+
+// Process an image segment for a specified duration
+async function processImageSegment(
+  image: HTMLImageElement,
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  overlayImg: HTMLImageElement,
+  durationSeconds: number,
+  onProgress: (currentTime: number) => void
+): Promise<void> {
+  return new Promise((resolve) => {
+    const frameRate = 30;
+    const frameDuration = 1000 / frameRate;
+    const totalFrames = durationSeconds * frameRate;
+    let frameCount = 0;
+    let lastFrameTime = 0;
+
+    const renderLoop = (timestamp: number) => {
+      if (frameCount >= totalFrames) {
+        resolve();
+        return;
+      }
+
+      // Throttle to target frame rate
+      if (timestamp - lastFrameTime >= frameDuration) {
+        drawImageFrame(ctx, image, canvasWidth, canvasHeight, overlayImg);
+        frameCount++;
+        onProgress(frameCount / frameRate);
+        lastFrameTime = timestamp;
+      }
+
+      requestAnimationFrame(renderLoop);
+    };
+
+    requestAnimationFrame(renderLoop);
+  });
+}
+
 // Process a single video and record to MediaRecorder
 async function processVideoSegment(
   video: HTMLVideoElement,
@@ -144,18 +228,22 @@ export interface MergeResult {
 
 export async function mergeVideosNative(
   launchVideoUrl: string,
-  adVideoUrl: string,
+  adAssetUrl: string,
   crossSvgUrl: string,
+  adAssetType: "video" | "image" = "video",
   onProgress?: (progress: number, stage?: string) => void
 ): Promise<MergeResult> {
-  onProgress?.(5, "Chargement des vidéos...");
+  onProgress?.(5, "Chargement des ressources...");
 
   // Load all resources in parallel
-  const [launchVideo, adVideo, crossImg] = await Promise.all([
+  const [launchVideo, crossImg] = await Promise.all([
     loadVideo(launchVideoUrl),
-    loadVideo(adVideoUrl),
     loadImage(crossSvgUrl),
   ]);
+
+  // Load ad asset based on type
+  const adVideo = adAssetType === "video" ? await loadVideo(adAssetUrl) : null;
+  const adImage = adAssetType === "image" ? await loadImage(adAssetUrl) : null;
 
   onProgress?.(20, "Préparation du canvas...");
 
@@ -245,11 +333,12 @@ export async function mergeVideosNative(
   recorder.start(100); // Get data every 100ms
 
   // Calculate total duration for progress
-  const totalDuration = launchVideo.duration + adVideo.duration;
+  const adDuration = adVideo ? adVideo.duration : 5; // 5 seconds for images
+  const totalDuration = launchVideo.duration + adDuration;
   let processedDuration = 0;
 
-  const updateProgress = (currentVideo: HTMLVideoElement, baseProgress: number) => {
-    processedDuration = baseProgress + currentVideo.currentTime;
+  const updateProgress = (currentTime: number, baseProgress: number) => {
+    processedDuration = baseProgress + currentTime;
     const percent = 30 + (processedDuration / totalDuration) * 60;
     onProgress?.(Math.min(90, percent), "Fusion en cours...");
   };
@@ -264,23 +353,36 @@ export async function mergeVideosNative(
     canvasWidth,
     canvasHeight,
     undefined, // No overlay on launch video
-    () => updateProgress(launchVideo, 0)
+    () => updateProgress(launchVideo.currentTime, 0)
   );
   launchVideo.muted = true;
 
-  onProgress?.(60, "Enregistrement de la 2ème vidéo...");
+  onProgress?.(60, adVideo ? "Enregistrement de la 2ème vidéo..." : "Enregistrement de l'image...");
 
-  // Process second video
-  adVideo.muted = false;
-  await processVideoSegment(
-    adVideo,
-    ctx,
-    canvasWidth,
-    canvasHeight,
-    crossImg,
-    () => updateProgress(adVideo, launchVideo.duration)
-  );
-  adVideo.muted = true;
+  // Process second asset (video or image) with cross overlay
+  if (adVideo) {
+    adVideo.muted = false;
+    await processVideoSegment(
+      adVideo,
+      ctx,
+      canvasWidth,
+      canvasHeight,
+      crossImg,
+      () => updateProgress(adVideo.currentTime, launchVideo.duration)
+    );
+    adVideo.muted = true;
+  } else if (adImage) {
+    // For images, display for 5 seconds with the cross overlay
+    await processImageSegment(
+      adImage,
+      ctx,
+      canvasWidth,
+      canvasHeight,
+      crossImg,
+      5, // 5 seconds duration
+      (currentTime) => updateProgress(currentTime, launchVideo.duration)
+    );
+  }
 
   onProgress?.(92, "Finalisation...");
 
