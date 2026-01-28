@@ -14,6 +14,8 @@ interface VideoLibraryProps {
   onSelectVideo: (id: string) => void;
   onPreviewVideo: (video: Video) => void;
   onClearLibrary: () => void;
+  onDeleteVideo: (id: string) => void;
+  onRenameVideo: (id: string, newName: string) => void;
 }
 
 export const VideoLibrary = ({
@@ -22,6 +24,8 @@ export const VideoLibrary = ({
   onSelectVideo,
   onPreviewVideo,
   onClearLibrary,
+  onDeleteVideo,
+  onRenameVideo,
 }: VideoLibraryProps) => {
   if (videos.length === 0) return null;
 
@@ -58,6 +62,8 @@ export const VideoLibrary = ({
             isSelected={selectedVideoId === video.id}
             onSelect={() => onSelectVideo(video.id)}
             onPreview={() => onPreviewVideo(video)}
+            onDelete={() => onDeleteVideo(video.id)}
+            onRename={(newName) => onRenameVideo(video.id, newName)}
           />
         ))}
       </div>

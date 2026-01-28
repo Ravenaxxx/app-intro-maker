@@ -58,7 +58,7 @@ const Index = () => {
         description: "Traitement en cours dans le navigateur",
       });
 
-      const mergedBlob = await mergeVideosNative(
+      const result = await mergeVideosNative(
         selectedVideo.url,
         adVideo.url,
         "/croix.svg",
@@ -68,7 +68,7 @@ const Index = () => {
         }
       );
 
-      downloadBlob(mergedBlob, `fusion-${Date.now()}.webm`);
+      downloadBlob(result.blob, `fusion-${Date.now()}.${result.extension}`);
 
       toast.success("Vidéo exportée avec succès !", {
         description: "La fusion a été réalisée et le fichier est téléchargé.",
@@ -144,6 +144,17 @@ const Index = () => {
           onClearLibrary={() => {
             setLibraryVideos([]);
             setSelectedLibraryVideoId(null);
+          }}
+          onDeleteVideo={(id) => {
+            setLibraryVideos((prev) => prev.filter((v) => v.id !== id));
+            if (selectedLibraryVideoId === id) {
+              setSelectedLibraryVideoId(null);
+            }
+          }}
+          onRenameVideo={(id, newName) => {
+            setLibraryVideos((prev) =>
+              prev.map((v) => (v.id === id ? { ...v, name: newName } : v))
+            );
           }}
         />
 

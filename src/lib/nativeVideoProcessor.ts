@@ -137,12 +137,17 @@ async function processVideoSegment(
   });
 }
 
+export interface MergeResult {
+  blob: Blob;
+  extension: string;
+}
+
 export async function mergeVideosNative(
   launchVideoUrl: string,
   adVideoUrl: string,
   crossSvgUrl: string,
   onProgress?: (progress: number, stage?: string) => void
-): Promise<Blob> {
+): Promise<MergeResult> {
   onProgress?.(5, "Chargement des vidéos...");
 
   // Load all resources in parallel
@@ -197,19 +202,23 @@ export async function mergeVideosNative(
     console.warn("Could not set up audio mixing, video will be silent:", e);
   }
 
-  // Set up MediaRecorder with best available codec
+  // Set up MediaRecorder - try MP4 first, fallback to WebM
   const mimeTypes = [
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp8,opus",
-    "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8",
-    "video/webm",
+    { mime: "video/mp4;codecs=avc1,mp4a.40.2", ext: "mp4" },
+    { mime: "video/mp4", ext: "mp4" },
+    { mime: "video/webm;codecs=vp9,opus", ext: "webm" },
+    { mime: "video/webm;codecs=vp8,opus", ext: "webm" },
+    { mime: "video/webm;codecs=vp9", ext: "webm" },
+    { mime: "video/webm;codecs=vp8", ext: "webm" },
+    { mime: "video/webm", ext: "webm" },
   ];
 
   let selectedMimeType = "";
-  for (const mime of mimeTypes) {
+  let selectedExtension = "webm";
+  for (const { mime, ext } of mimeTypes) {
     if (MediaRecorder.isTypeSupported(mime)) {
       selectedMimeType = mime;
+      selectedExtension = ext;
       break;
     }
   }
@@ -218,7 +227,7 @@ export async function mergeVideosNative(
     throw new Error("No supported video codec found in this browser");
   }
 
-  console.log("[NativeProcessor] Using codec:", selectedMimeType);
+  console.log("[NativeProcessor] Using codec:", selectedMimeType, "extension:", selectedExtension);
 
   const chunks: Blob[] = [];
   const recorder = new MediaRecorder(stream, {
@@ -280,7 +289,7 @@ export async function mergeVideosNative(
     recorder.onstop = () => {
       const finalBlob = new Blob(chunks, { type: selectedMimeType });
       onProgress?.(100, "Terminé !");
-      resolve(finalBlob);
+      resolve({ blob: finalBlob, extension: selectedExtension });
     };
 
     recorder.onerror = (e) => {
