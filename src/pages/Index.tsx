@@ -14,10 +14,17 @@ interface Video {
   url: string;
   thumbnail?: string;
 }
+
+interface AdAsset {
+  id: string;
+  name: string;
+  url: string;
+  type: "video" | "image";
+}
 const Index = () => {
   const [libraryVideos, setLibraryVideos] = useState<Video[]>([]);
   const [selectedLibraryVideoId, setSelectedLibraryVideoId] = useState<string | null>(null);
-  const [adVideo, setAdVideo] = useState<Video | null>(null);
+  const [adAsset, setAdAsset] = useState<AdAsset | null>(null);
   const [previewVideo, setPreviewVideo] = useState<Video | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -36,16 +43,18 @@ const Index = () => {
 
   const handleAdVideoUpload = useCallback((files: File[]) => {
     const file = files[0];
-    setAdVideo({
+    const isImage = file.type.startsWith("image/");
+    setAdAsset({
       id: crypto.randomUUID(),
       name: file.name,
       url: URL.createObjectURL(file),
+      type: isImage ? "image" : "video",
     });
-    toast.success("Vidéo publicitaire chargée");
+    toast.success(isImage ? "Image publicitaire chargée" : "Vidéo publicitaire chargée");
   }, []);
 
   const handleExport = useCallback(async () => {
-    if (!selectedLibraryVideoId || !adVideo) return;
+    if (!selectedLibraryVideoId || !adAsset) return;
 
     const selectedVideo = libraryVideos.find(v => v.id === selectedLibraryVideoId);
     if (!selectedVideo) return;
@@ -60,8 +69,9 @@ const Index = () => {
 
       const result = await mergeVideosNative(
         selectedVideo.url,
-        adVideo.url,
+        adAsset.url,
         "/croix.svg",
+        adAsset.type,
         (progress, stage) => {
           setExportProgress(progress);
           if (stage) setExportStage(stage);
@@ -91,12 +101,12 @@ const Index = () => {
       setExportProgress(0);
       setExportStage("");
     }
-  }, [selectedLibraryVideoId, adVideo, libraryVideos]);
+  }, [selectedLibraryVideoId, adAsset, libraryVideos]);
 
   const selectedLibraryVideo = libraryVideos.find(
     (v) => v.id === selectedLibraryVideoId
   );
-  const canExport = selectedLibraryVideo && adVideo && !isExporting;
+  const canExport = selectedLibraryVideo && adAsset && !isExporting;
 
   return (
     <div className="min-h-screen bg-background">
@@ -129,9 +139,10 @@ const Index = () => {
             onUpload={handleLibraryUpload}
           />
           <UploadZone
-            title="Vidéo publicitaire"
-            description="Uploadez votre vidéo au format publicitaire"
+            title="Asset publicitaire"
+            description="Uploadez une vidéo ou image (.mp4, .png, .jpeg)"
             onUpload={handleAdVideoUpload}
+            accept="video/*,image/png,image/jpeg,image/jpg"
           />
         </section>
 
@@ -158,15 +169,15 @@ const Index = () => {
           }}
         />
 
-        {/* Ad Video Section */}
+        {/* Ad Asset Section */}
         <AdVideoSection
-          video={adVideo}
-          onPreview={() => adVideo && setPreviewVideo(adVideo)}
-          onRemove={() => setAdVideo(null)}
+          asset={adAsset}
+          onPreview={() => adAsset && adAsset.type === "video" && setPreviewVideo({ id: adAsset.id, name: adAsset.name, url: adAsset.url })}
+          onRemove={() => setAdAsset(null)}
         />
 
         {/* Preview & Export Section */}
-        {(selectedLibraryVideo || adVideo) && (
+        {(selectedLibraryVideo || adAsset) && (
           <section className="grid lg:grid-cols-3 gap-6">
             {/* Preview */}
             <div className="lg:col-span-2 glass-panel rounded-2xl p-6 animate-fade-in">
@@ -198,58 +209,66 @@ const Index = () => {
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Vidéo publicitaire
+                    Asset publicitaire
                   </p>
                   <div className="relative aspect-video bg-muted rounded-xl overflow-hidden">
-                    {adVideo ? (
-                      <>
-                        <video
-                          ref={adVideoRef}
-                          src={adVideo.url}
-                          className="w-full h-full object-cover cursor-pointer"
-                          muted
-                          playsInline
-                          onClick={() => {
-                            if (adVideoRef.current) {
-                              if (adVideoRef.current.paused) {
-                                adVideoRef.current.play();
-                                setIsAdVideoPlaying(true);
-                              } else {
-                                adVideoRef.current.pause();
-                                setIsAdVideoPlaying(false);
-                              }
-                            }
-                          }}
-                          onPlay={() => setIsAdVideoPlaying(true)}
-                          onPause={() => setIsAdVideoPlaying(false)}
-                          onEnded={() => setIsAdVideoPlaying(false)}
-                        />
-                        {isAdVideoPlaying && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
+                    {adAsset ? (
+                      adAsset.type === "video" ? (
+                        <>
+                          <video
+                            ref={adVideoRef}
+                            src={adAsset.url}
+                            className="w-full h-full object-cover cursor-pointer"
+                            muted
+                            playsInline
+                            onClick={() => {
                               if (adVideoRef.current) {
-                                adVideoRef.current.pause();
-                                adVideoRef.current.currentTime = 0;
-                                setIsAdVideoPlaying(false);
+                                if (adVideoRef.current.paused) {
+                                  adVideoRef.current.play();
+                                  setIsAdVideoPlaying(true);
+                                } else {
+                                  adVideoRef.current.pause();
+                                  setIsAdVideoPlaying(false);
+                                }
                               }
                             }}
-                            className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-background/80 backdrop-blur-sm border border-border hover:bg-destructive hover:border-destructive flex items-center justify-center transition-all animate-fade-in"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                        {!isAdVideoPlaying && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="text-xs text-muted-foreground bg-background/60 px-2 py-1 rounded">
-                              Cliquez pour lire
-                            </span>
-                          </div>
-                        )}
-                      </>
+                            onPlay={() => setIsAdVideoPlaying(true)}
+                            onPause={() => setIsAdVideoPlaying(false)}
+                            onEnded={() => setIsAdVideoPlaying(false)}
+                          />
+                          {isAdVideoPlaying && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (adVideoRef.current) {
+                                  adVideoRef.current.pause();
+                                  adVideoRef.current.currentTime = 0;
+                                  setIsAdVideoPlaying(false);
+                                }
+                              }}
+                              className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-background/80 backdrop-blur-sm border border-border hover:bg-destructive hover:border-destructive flex items-center justify-center transition-all animate-fade-in"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+                          {!isAdVideoPlaying && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <span className="text-xs text-muted-foreground bg-background/60 px-2 py-1 rounded">
+                                Cliquez pour lire
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <img
+                          src={adAsset.url}
+                          alt={adAsset.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                        Uploadez une vidéo
+                        Uploadez un asset
                       </div>
                     )}
                   </div>
