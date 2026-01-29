@@ -22,14 +22,24 @@ export const UploadZone = ({
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      const files = Array.from(e.dataTransfer.files).filter((file) =>
-        file.type.startsWith("video/")
-      );
+      
+      // Parse accepted types from the accept prop
+      const acceptedTypes = accept.split(",").map(t => t.trim());
+      
+      const files = Array.from(e.dataTransfer.files).filter((file) => {
+        return acceptedTypes.some(acceptType => {
+          if (acceptType === "video/*") return file.type.startsWith("video/");
+          if (acceptType === "image/*") return file.type.startsWith("image/");
+          // Handle specific mime types like "image/png", "image/jpeg"
+          return file.type === acceptType || file.type === acceptType.replace(".", "");
+        });
+      });
+      
       if (files.length > 0) {
         onUpload(multiple ? files : [files[0]]);
       }
     },
-    [onUpload, multiple]
+    [onUpload, multiple, accept]
   );
 
   const handleFileSelect = useCallback(
