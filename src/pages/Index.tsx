@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Clapperboard, Sparkles, X } from "lucide-react";
 import { UploadZone } from "@/components/UploadZone";
 import { VideoLibrary } from "@/components/VideoLibrary";
@@ -7,6 +7,15 @@ import { VideoPreviewModal } from "@/components/VideoPreviewModal";
 import { ExportProgress } from "@/components/ExportProgress";
 import { toast } from "sonner";
 import { mergeVideosNative, downloadBlob } from "@/lib/nativeVideoProcessor";
+import {
+  saveVideo,
+  getAllVideos,
+  deleteVideo as deleteVideoFromDB,
+  updateVideoName,
+  clearAllVideos,
+  storedVideoToAppVideo,
+  fileToStoredVideo,
+} from "@/lib/videoStorage";
 
 interface Video {
   id: string;
@@ -30,15 +39,40 @@ const Index = () => {
   const [exportProgress, setExportProgress] = useState(0);
   const [exportStage, setExportStage] = useState("");
   const [isAdVideoPlaying, setIsAdVideoPlaying] = useState(false);
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const adVideoRef = useRef<HTMLVideoElement>(null);
-  const handleLibraryUpload = useCallback((files: File[]) => {
-    const newVideos = files.map((file) => ({
-      id: crypto.randomUUID(),
-      name: file.name,
-      url: URL.createObjectURL(file),
-    }));
-    setLibraryVideos((prev) => [...prev, ...newVideos]);
-    toast.success(`${files.length} vidéo${files.length > 1 ? "s" : ""} ajoutée${files.length > 1 ? "s" : ""} à la bibliothèque`);
+
+  // Load videos from IndexedDB on mount
+  useEffect(() => {
+    const loadVideos = async () => {
+      try {
+        const storedVideos = await getAllVideos();
+        const appVideos = storedVideos.map(storedVideoToAppVideo);
+        setLibraryVideos(appVideos);
+      } catch (error) {
+        console.error("Failed to load videos from storage:", error);
+        toast.error("Erreur lors du chargement de la bibliothèque");
+      } finally {
+        setIsLoadingLibrary(false);
+      }
+    };
+    loadVideos();
+  }, []);
+
+  const handleLibraryUpload = useCallback(async (files: File[]) => {
+    try {
+      const newVideos: Video[] = [];
+      for (const file of files) {
+        const storedVideo = await fileToStoredVideo(file);
+        await saveVideo(storedVideo);
+        newVideos.push(storedVideoToAppVideo(storedVideo));
+      }
+      setLibraryVideos((prev) => [...prev, ...newVideos]);
+      toast.success(`${files.length} vidéo${files.length > 1 ? "s" : ""} ajoutée${files.length > 1 ? "s" : ""} à la bibliothèque`);
+    } catch (error) {
+      console.error("Failed to save videos:", error);
+      toast.error("Erreur lors de la sauvegarde des vidéos");
+    }
   }, []);
 
   const handleAdVideoUpload = useCallback((files: File[]) => {
@@ -152,20 +186,39 @@ const Index = () => {
           selectedVideoId={selectedLibraryVideoId}
           onSelectVideo={setSelectedLibraryVideoId}
           onPreviewVideo={setPreviewVideo}
-          onClearLibrary={() => {
-            setLibraryVideos([]);
-            setSelectedLibraryVideoId(null);
-          }}
-          onDeleteVideo={(id) => {
-            setLibraryVideos((prev) => prev.filter((v) => v.id !== id));
-            if (selectedLibraryVideoId === id) {
+          onClearLibrary={async () => {
+            try {
+              await clearAllVideos();
+              setLibraryVideos([]);
               setSelectedLibraryVideoId(null);
+              toast.success("Bibliothèque vidée");
+            } catch (error) {
+              console.error("Failed to clear library:", error);
+              toast.error("Erreur lors de la suppression");
             }
           }}
-          onRenameVideo={(id, newName) => {
-            setLibraryVideos((prev) =>
-              prev.map((v) => (v.id === id ? { ...v, name: newName } : v))
-            );
+          onDeleteVideo={async (id) => {
+            try {
+              await deleteVideoFromDB(id);
+              setLibraryVideos((prev) => prev.filter((v) => v.id !== id));
+              if (selectedLibraryVideoId === id) {
+                setSelectedLibraryVideoId(null);
+              }
+            } catch (error) {
+              console.error("Failed to delete video:", error);
+              toast.error("Erreur lors de la suppression");
+            }
+          }}
+          onRenameVideo={async (id, newName) => {
+            try {
+              await updateVideoName(id, newName);
+              setLibraryVideos((prev) =>
+                prev.map((v) => (v.id === id ? { ...v, name: newName } : v))
+              );
+            } catch (error) {
+              console.error("Failed to rename video:", error);
+              toast.error("Erreur lors du renommage");
+            }
           }}
         />
 
