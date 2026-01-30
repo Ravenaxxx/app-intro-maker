@@ -386,9 +386,19 @@ export async function mergeVideosNative(
 
   onProgress?.(92, "Finalisation...");
 
-  // Stop recording and get final blob
+  // Draw the last frame one more time to ensure clean ending
+  if (adVideo) {
+    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg);
+  } else if (adImage) {
+    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg);
+  }
+
+  // Stop recording immediately - no delay needed
   return new Promise((resolve, reject) => {
     recorder.onstop = () => {
+      // Stop all tracks to clean up
+      stream.getTracks().forEach(track => track.stop());
+      
       const finalBlob = new Blob(chunks, { type: selectedMimeType });
       onProgress?.(100, "Terminé !");
       resolve({ blob: finalBlob, extension: selectedExtension });
@@ -398,10 +408,8 @@ export async function mergeVideosNative(
       reject(new Error(`Recording error: ${e}`));
     };
 
-    // Small delay to ensure last frames are captured
-    setTimeout(() => {
-      recorder.stop();
-    }, 200);
+    // Stop immediately - the last frame is already drawn
+    recorder.stop();
   });
 }
 
