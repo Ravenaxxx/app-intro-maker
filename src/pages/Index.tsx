@@ -3,6 +3,7 @@ import { Clapperboard, Sparkles, X } from "lucide-react";
 import { UploadZone } from "@/components/UploadZone";
 import { VideoLibrary } from "@/components/VideoLibrary";
 import { AdVideoSection } from "@/components/AdVideoSection";
+import { ArticleSection } from "@/components/ArticleSection";
 import { VideoPreviewModal } from "@/components/VideoPreviewModal";
 import { ExportProgress } from "@/components/ExportProgress";
 import { toast } from "sonner";
@@ -30,8 +31,16 @@ interface AdAsset {
   url: string;
   type: "video" | "image";
 }
+
+interface Article {
+  url: string;
+  title: string;
+  markdown: string;
+  screenshot?: string;
+}
 const Index = () => {
   const [libraryVideos, setLibraryVideos] = useState<Video[]>([]);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [selectedLibraryVideoId, setSelectedLibraryVideoId] = useState<string | null>(null);
   const [adAsset, setAdAsset] = useState<AdAsset | null>(null);
   const [previewVideo, setPreviewVideo] = useState<Video | null>(null);
@@ -227,6 +236,13 @@ const Index = () => {
           asset={adAsset}
           onPreview={() => adAsset && adAsset.type === "video" && setPreviewVideo({ id: adAsset.id, name: adAsset.name, url: adAsset.url })}
           onRemove={() => setAdAsset(null)}
+        />
+
+        {/* Article Search Section */}
+        <ArticleSection
+          article={selectedArticle}
+          onSelectArticle={setSelectedArticle}
+          onClearArticle={() => setSelectedArticle(null)}
         />
 
         {/* Preview & Export Section */}
