@@ -4,6 +4,7 @@ import { UploadZone } from "@/components/UploadZone";
 import { VideoLibrary } from "@/components/VideoLibrary";
 import { AdVideoSection } from "@/components/AdVideoSection";
 import { ArticleSection } from "@/components/ArticleSection";
+import { SimulationSection } from "@/components/SimulationSection";
 import { VideoPreviewModal } from "@/components/VideoPreviewModal";
 import { ExportProgress } from "@/components/ExportProgress";
 import { toast } from "sonner";
@@ -244,6 +245,11 @@ const Index = () => {
           onSelectArticle={setSelectedArticle}
           onClearArticle={() => setSelectedArticle(null)}
         />
+
+        {/* Ad Simulation Section */}
+        {selectedArticle && adAsset && (
+          <SimulationSection article={selectedArticle} adAsset={adAsset} />
+        )}
 
         {/* Preview & Export Section */}
         {(selectedLibraryVideo || adAsset) && (
