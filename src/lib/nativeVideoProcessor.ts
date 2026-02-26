@@ -247,9 +247,9 @@ export async function mergeVideosNative(
 
   onProgress?.(20, "Préparation du canvas...");
 
-  // Create canvas for rendering - use 720x1280 for vertical video
-  const canvasWidth = 720;
-  const canvasHeight = 1280;
+  // Use the first video's dimensions as the output size
+  const canvasWidth = launchVideo.videoWidth;
+  const canvasHeight = launchVideo.videoHeight;
   
   const canvas = document.createElement("canvas");
   canvas.width = canvasWidth;
