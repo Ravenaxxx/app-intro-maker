@@ -31,12 +31,6 @@ interface AdAsset {
   type: "video" | "image";
 }
 
-interface Article {
-  url: string;
-  title: string;
-  markdown: string;
-  screenshot?: string;
-}
 const Index = () => {
   const [libraryVideos, setLibraryVideos] = useState<Video[]>([]);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
