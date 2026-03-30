@@ -1,122 +1,109 @@
-// IndexedDB storage for video library persistence
-
-const DB_NAME = "VideoFusionDB";
-const DB_VERSION = 1;
-const STORE_NAME = "videos";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StoredVideo {
   id: string;
   name: string;
-  blob: Blob;
-  thumbnail?: string;
+  storage_path: string;
 }
 
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+const BUCKET = "videos";
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-  });
+function getPublicUrl(path: string): string {
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
 }
 
-export async function saveVideo(video: StoredVideo): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(video);
+export async function saveVideo(file: File): Promise<StoredVideo> {
+  const id = crypto.randomUUID();
+  const ext = file.name.split(".").pop() || "mp4";
+  const storagePath = `${id}.${ext}`;
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
-    transaction.oncomplete = () => db.close();
-  });
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(storagePath, file, { contentType: file.type });
+
+  if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+  const { error: dbError } = await supabase
+    .from("library_videos")
+    .insert({ id, name: file.name, storage_path: storagePath });
+
+  if (dbError) throw new Error(`DB insert failed: ${dbError.message}`);
+
+  return { id, name: file.name, storage_path: storagePath };
 }
 
 export async function getAllVideos(): Promise<StoredVideo[]> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readonly");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
+  const { data, error } = await supabase
+    .from("library_videos")
+    .select("id, name, storage_path")
+    .order("created_at", { ascending: false });
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    transaction.oncomplete = () => db.close();
-  });
+  if (error) throw new Error(`Failed to load videos: ${error.message}`);
+  return data || [];
 }
 
 export async function deleteVideo(id: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete(id);
+  // Get storage path first
+  const { data } = await supabase
+    .from("library_videos")
+    .select("storage_path")
+    .eq("id", id)
+    .single();
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
-    transaction.oncomplete = () => db.close();
-  });
+  if (data?.storage_path) {
+    await supabase.storage.from(BUCKET).remove([data.storage_path]);
+  }
+
+  const { error } = await supabase
+    .from("library_videos")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw new Error(`Failed to delete: ${error.message}`);
 }
 
 export async function updateVideoName(id: string, newName: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const getRequest = store.get(id);
+  const { error } = await supabase
+    .from("library_videos")
+    .update({ name: newName })
+    .eq("id", id);
 
-    getRequest.onerror = () => reject(getRequest.error);
-    getRequest.onsuccess = () => {
-      const video = getRequest.result;
-      if (video) {
-        video.name = newName;
-        const putRequest = store.put(video);
-        putRequest.onerror = () => reject(putRequest.error);
-        putRequest.onsuccess = () => resolve();
-      } else {
-        reject(new Error("Video not found"));
-      }
-    };
-    transaction.oncomplete = () => db.close();
-  });
+  if (error) throw new Error(`Failed to rename: ${error.message}`);
 }
 
 export async function clearAllVideos(): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, "readwrite");
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.clear();
+  // Get all storage paths
+  const { data } = await supabase
+    .from("library_videos")
+    .select("storage_path");
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
-    transaction.oncomplete = () => db.close();
-  });
+  if (data && data.length > 0) {
+    const paths = data.map((v) => v.storage_path);
+    await supabase.storage.from(BUCKET).remove(paths);
+  }
+
+  const { error } = await supabase
+    .from("library_videos")
+    .delete()
+    .gte("created_at", "1970-01-01");
+
+  if (error) throw new Error(`Failed to clear: ${error.message}`);
 }
 
-// Convert stored videos to URL-based format for the app
-export function storedVideoToAppVideo(stored: StoredVideo): { id: string; name: string; url: string; thumbnail?: string } {
+export function storedVideoToAppVideo(stored: StoredVideo): {
+  id: string;
+  name: string;
+  url: string;
+} {
   return {
     id: stored.id,
     name: stored.name,
-    url: URL.createObjectURL(stored.blob),
-    thumbnail: stored.thumbnail,
+    url: getPublicUrl(stored.storage_path),
   };
 }
 
-// Convert File to StoredVideo format
+// Keep this export for backward compat but it's now handled by saveVideo
 export async function fileToStoredVideo(file: File): Promise<StoredVideo> {
-  return {
-    id: crypto.randomUUID(),
-    name: file.name,
-    blob: file,
-  };
+  return saveVideo(file);
 }
