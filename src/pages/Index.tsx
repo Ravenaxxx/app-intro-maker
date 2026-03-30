@@ -33,7 +33,7 @@ interface AdAsset {
 
 const Index = () => {
   const [libraryVideos, setLibraryVideos] = useState<Video[]>([]);
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  
   const [selectedLibraryVideoId, setSelectedLibraryVideoId] = useState<string | null>(null);
   const [adAsset, setAdAsset] = useState<AdAsset | null>(null);
   const [previewVideo, setPreviewVideo] = useState<Video | null>(null);
@@ -231,17 +231,6 @@ const Index = () => {
           onRemove={() => setAdAsset(null)}
         />
 
-        {/* Article Search Section */}
-        <ArticleSection
-          article={selectedArticle}
-          onSelectArticle={setSelectedArticle}
-          onClearArticle={() => setSelectedArticle(null)}
-        />
-
-        {/* Ad Simulation Section */}
-        {selectedArticle && adAsset && (
-          <SimulationSection article={selectedArticle} adAsset={adAsset} />
-        )}
 
         {/* Preview & Export Section */}
         {(selectedLibraryVideo || adAsset) && (
