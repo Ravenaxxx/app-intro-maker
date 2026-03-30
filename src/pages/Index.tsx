@@ -62,11 +62,10 @@ const Index = () => {
 
   const handleLibraryUpload = useCallback(async (files: File[]) => {
     try {
-      const newVideos: Video[] = [];
+      const newVideos: { id: string; name: string; url: string }[] = [];
       for (const file of files) {
-        const storedVideo = await fileToStoredVideo(file);
-        await saveVideo(storedVideo);
-        newVideos.push(storedVideoToAppVideo(storedVideo));
+        const stored = await saveVideo(file);
+        newVideos.push(storedVideoToAppVideo(stored));
       }
       setLibraryVideos((prev) => [...prev, ...newVideos]);
       toast.success(`${files.length} vidéo${files.length > 1 ? "s" : ""} ajoutée${files.length > 1 ? "s" : ""} à la bibliothèque`);
