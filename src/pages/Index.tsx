@@ -14,7 +14,6 @@ import {
   updateVideoName,
   clearAllVideos,
   storedVideoToAppVideo,
-  fileToStoredVideo,
 } from "@/lib/videoStorage";
 
 interface Video {
