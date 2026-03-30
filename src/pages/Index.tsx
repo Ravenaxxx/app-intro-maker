@@ -3,8 +3,6 @@ import { Clapperboard, Sparkles, X } from "lucide-react";
 import { UploadZone } from "@/components/UploadZone";
 import { VideoLibrary } from "@/components/VideoLibrary";
 import { AdVideoSection } from "@/components/AdVideoSection";
-import { ArticleSection } from "@/components/ArticleSection";
-import { SimulationSection } from "@/components/SimulationSection";
 import { VideoPreviewModal } from "@/components/VideoPreviewModal";
 import { ExportProgress } from "@/components/ExportProgress";
 import { toast } from "sonner";
