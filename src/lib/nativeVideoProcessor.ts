@@ -149,7 +149,8 @@ async function processImageSegment(
   canvasHeight: number,
   overlayImg: HTMLImageElement,
   durationSeconds: number,
-  onProgress: (currentTime: number) => void
+  onProgress: (currentTime: number) => void,
+  fitMode: "contain" | "fill" = "contain"
 ): Promise<void> {
   return new Promise((resolve) => {
     const frameRate = 30;
@@ -164,9 +165,8 @@ async function processImageSegment(
         return;
       }
 
-      // Throttle to target frame rate
       if (timestamp - lastFrameTime >= frameDuration) {
-        drawImageFrame(ctx, image, canvasWidth, canvasHeight, overlayImg);
+        drawImageFrame(ctx, image, canvasWidth, canvasHeight, overlayImg, fitMode);
         frameCount++;
         onProgress(frameCount / frameRate);
         lastFrameTime = timestamp;
@@ -186,7 +186,8 @@ async function processVideoSegment(
   canvasWidth: number,
   canvasHeight: number,
   overlayImg: HTMLImageElement,
-  onFrame: () => void
+  onFrame: () => void,
+  fitMode: "contain" | "fill" = "contain"
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     video.currentTime = 0;
@@ -203,9 +204,8 @@ async function processVideoSegment(
         return;
       }
 
-      // Throttle to target frame rate
       if (timestamp - lastFrameTime >= frameDuration) {
-        drawFrame(ctx, video, canvasWidth, canvasHeight, overlayImg);
+        drawFrame(ctx, video, canvasWidth, canvasHeight, overlayImg, fitMode);
         onFrame();
         lastFrameTime = timestamp;
       }
