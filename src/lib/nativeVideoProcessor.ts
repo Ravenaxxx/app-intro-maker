@@ -45,31 +45,37 @@ function drawFrame(
   video: HTMLVideoElement,
   canvasWidth: number,
   canvasHeight: number,
-  overlayImg?: HTMLImageElement
+  overlayImg?: HTMLImageElement,
+  fitMode: "contain" | "fill" = "contain"
 ) {
   // Clear canvas
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // Calculate scaling to fit video in canvas while maintaining aspect ratio
-  const videoAspect = video.videoWidth / video.videoHeight;
-  const canvasAspect = canvasWidth / canvasHeight;
-
-  let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
-
-  if (videoAspect > canvasAspect) {
-    drawWidth = canvasWidth;
-    drawHeight = canvasWidth / videoAspect;
-    offsetX = 0;
-    offsetY = (canvasHeight - drawHeight) / 2;
+  if (fitMode === "fill") {
+    // Stretch the asset to occupy the full canvas size
+    ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
   } else {
-    drawHeight = canvasHeight;
-    drawWidth = canvasHeight * videoAspect;
-    offsetX = (canvasWidth - drawWidth) / 2;
-    offsetY = 0;
-  }
+    // Calculate scaling to fit video in canvas while maintaining aspect ratio
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const canvasAspect = canvasWidth / canvasHeight;
 
-  ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+    let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+
+    if (videoAspect > canvasAspect) {
+      drawWidth = canvasWidth;
+      drawHeight = canvasWidth / videoAspect;
+      offsetX = 0;
+      offsetY = (canvasHeight - drawHeight) / 2;
+    } else {
+      drawHeight = canvasHeight;
+      drawWidth = canvasHeight * videoAspect;
+      offsetX = (canvasWidth - drawWidth) / 2;
+      offsetY = 0;
+    }
+
+    ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+  }
 
   // Draw overlay in top-right corner
   if (overlayImg) {
@@ -91,31 +97,35 @@ function drawImageFrame(
   image: HTMLImageElement,
   canvasWidth: number,
   canvasHeight: number,
-  overlayImg?: HTMLImageElement
+  overlayImg?: HTMLImageElement,
+  fitMode: "contain" | "fill" = "contain"
 ) {
   // Clear canvas
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // Calculate scaling to fit image in canvas while maintaining aspect ratio
-  const imageAspect = image.width / image.height;
-  const canvasAspect = canvasWidth / canvasHeight;
-
-  let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
-
-  if (imageAspect > canvasAspect) {
-    drawWidth = canvasWidth;
-    drawHeight = canvasWidth / imageAspect;
-    offsetX = 0;
-    offsetY = (canvasHeight - drawHeight) / 2;
+  if (fitMode === "fill") {
+    ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
   } else {
-    drawHeight = canvasHeight;
-    drawWidth = canvasHeight * imageAspect;
-    offsetX = (canvasWidth - drawWidth) / 2;
-    offsetY = 0;
-  }
+    const imageAspect = image.width / image.height;
+    const canvasAspect = canvasWidth / canvasHeight;
 
-  ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+    let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+
+    if (imageAspect > canvasAspect) {
+      drawWidth = canvasWidth;
+      drawHeight = canvasWidth / imageAspect;
+      offsetX = 0;
+      offsetY = (canvasHeight - drawHeight) / 2;
+    } else {
+      drawHeight = canvasHeight;
+      drawWidth = canvasHeight * imageAspect;
+      offsetX = (canvasWidth - drawWidth) / 2;
+      offsetY = 0;
+    }
+
+    ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+  }
 
   // Draw overlay in top-right corner
   if (overlayImg) {
