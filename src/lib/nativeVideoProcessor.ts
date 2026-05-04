@@ -46,7 +46,7 @@ function drawFrame(
   canvasWidth: number,
   canvasHeight: number,
   overlayImg?: HTMLImageElement,
-  fitMode: "contain" | "fill" = "contain"
+  fitMode: "contain" | "fill" | "width" = "contain"
 ) {
   // Clear canvas
   ctx.fillStyle = "#000";
@@ -55,6 +55,14 @@ function drawFrame(
   if (fitMode === "fill") {
     // Stretch the asset to occupy the full canvas size
     ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+  } else if (fitMode === "width") {
+    // Fill full canvas width, preserve aspect ratio, center vertically
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const drawWidth = canvasWidth;
+    const drawHeight = canvasWidth / videoAspect;
+    const offsetX = 0;
+    const offsetY = (canvasHeight - drawHeight) / 2;
+    ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
   } else {
     // Calculate scaling to fit video in canvas while maintaining aspect ratio
     const videoAspect = video.videoWidth / video.videoHeight;
@@ -98,7 +106,7 @@ function drawImageFrame(
   canvasWidth: number,
   canvasHeight: number,
   overlayImg?: HTMLImageElement,
-  fitMode: "contain" | "fill" = "contain"
+  fitMode: "contain" | "fill" | "width" = "contain"
 ) {
   // Clear canvas
   ctx.fillStyle = "#000";
@@ -106,6 +114,13 @@ function drawImageFrame(
 
   if (fitMode === "fill") {
     ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
+  } else if (fitMode === "width") {
+    const imageAspect = image.width / image.height;
+    const drawWidth = canvasWidth;
+    const drawHeight = canvasWidth / imageAspect;
+    const offsetX = 0;
+    const offsetY = (canvasHeight - drawHeight) / 2;
+    ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
   } else {
     const imageAspect = image.width / image.height;
     const canvasAspect = canvasWidth / canvasHeight;
@@ -150,7 +165,7 @@ async function processImageSegment(
   overlayImg: HTMLImageElement,
   durationSeconds: number,
   onProgress: (currentTime: number) => void,
-  fitMode: "contain" | "fill" = "contain"
+  fitMode: "contain" | "fill" | "width" = "contain"
 ): Promise<void> {
   return new Promise((resolve) => {
     const frameRate = 30;
@@ -187,7 +202,7 @@ async function processVideoSegment(
   canvasHeight: number,
   overlayImg: HTMLImageElement,
   onFrame: () => void,
-  fitMode: "contain" | "fill" = "contain"
+  fitMode: "contain" | "fill" | "width" = "contain"
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     video.currentTime = 0;
@@ -378,7 +393,8 @@ export async function mergeVideosNative(
       canvasWidth,
       canvasHeight,
       crossImg,
-      () => updateProgress(adVideo.currentTime, launchVideo.duration)
+      () => updateProgress(adVideo.currentTime, launchVideo.duration),
+      "width"
     );
     adVideo.muted = true;
   } else if (adImage) {
@@ -389,7 +405,8 @@ export async function mergeVideosNative(
       canvasHeight,
       crossImg,
       5,
-      (currentTime) => updateProgress(currentTime, launchVideo.duration)
+      (currentTime) => updateProgress(currentTime, launchVideo.duration),
+      "width"
     );
   }
 
@@ -397,9 +414,9 @@ export async function mergeVideosNative(
 
   // Draw the last frame one more time to ensure clean ending
   if (adVideo) {
-    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg);
+    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg, "width");
   } else if (adImage) {
-    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg);
+    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg, "width");
   }
 
   // Stop recording immediately - no delay needed
