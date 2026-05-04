@@ -45,31 +45,37 @@ function drawFrame(
   video: HTMLVideoElement,
   canvasWidth: number,
   canvasHeight: number,
-  overlayImg?: HTMLImageElement
+  overlayImg?: HTMLImageElement,
+  fitMode: "contain" | "fill" = "contain"
 ) {
   // Clear canvas
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // Calculate scaling to fit video in canvas while maintaining aspect ratio
-  const videoAspect = video.videoWidth / video.videoHeight;
-  const canvasAspect = canvasWidth / canvasHeight;
-
-  let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
-
-  if (videoAspect > canvasAspect) {
-    drawWidth = canvasWidth;
-    drawHeight = canvasWidth / videoAspect;
-    offsetX = 0;
-    offsetY = (canvasHeight - drawHeight) / 2;
+  if (fitMode === "fill") {
+    // Stretch the asset to occupy the full canvas size
+    ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
   } else {
-    drawHeight = canvasHeight;
-    drawWidth = canvasHeight * videoAspect;
-    offsetX = (canvasWidth - drawWidth) / 2;
-    offsetY = 0;
-  }
+    // Calculate scaling to fit video in canvas while maintaining aspect ratio
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const canvasAspect = canvasWidth / canvasHeight;
 
-  ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+    let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+
+    if (videoAspect > canvasAspect) {
+      drawWidth = canvasWidth;
+      drawHeight = canvasWidth / videoAspect;
+      offsetX = 0;
+      offsetY = (canvasHeight - drawHeight) / 2;
+    } else {
+      drawHeight = canvasHeight;
+      drawWidth = canvasHeight * videoAspect;
+      offsetX = (canvasWidth - drawWidth) / 2;
+      offsetY = 0;
+    }
+
+    ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+  }
 
   // Draw overlay in top-right corner
   if (overlayImg) {
@@ -91,31 +97,35 @@ function drawImageFrame(
   image: HTMLImageElement,
   canvasWidth: number,
   canvasHeight: number,
-  overlayImg?: HTMLImageElement
+  overlayImg?: HTMLImageElement,
+  fitMode: "contain" | "fill" = "contain"
 ) {
   // Clear canvas
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-  // Calculate scaling to fit image in canvas while maintaining aspect ratio
-  const imageAspect = image.width / image.height;
-  const canvasAspect = canvasWidth / canvasHeight;
-
-  let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
-
-  if (imageAspect > canvasAspect) {
-    drawWidth = canvasWidth;
-    drawHeight = canvasWidth / imageAspect;
-    offsetX = 0;
-    offsetY = (canvasHeight - drawHeight) / 2;
+  if (fitMode === "fill") {
+    ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
   } else {
-    drawHeight = canvasHeight;
-    drawWidth = canvasHeight * imageAspect;
-    offsetX = (canvasWidth - drawWidth) / 2;
-    offsetY = 0;
-  }
+    const imageAspect = image.width / image.height;
+    const canvasAspect = canvasWidth / canvasHeight;
 
-  ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+    let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+
+    if (imageAspect > canvasAspect) {
+      drawWidth = canvasWidth;
+      drawHeight = canvasWidth / imageAspect;
+      offsetX = 0;
+      offsetY = (canvasHeight - drawHeight) / 2;
+    } else {
+      drawHeight = canvasHeight;
+      drawWidth = canvasHeight * imageAspect;
+      offsetX = (canvasWidth - drawWidth) / 2;
+      offsetY = 0;
+    }
+
+    ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+  }
 
   // Draw overlay in top-right corner
   if (overlayImg) {
@@ -139,7 +149,8 @@ async function processImageSegment(
   canvasHeight: number,
   overlayImg: HTMLImageElement,
   durationSeconds: number,
-  onProgress: (currentTime: number) => void
+  onProgress: (currentTime: number) => void,
+  fitMode: "contain" | "fill" = "contain"
 ): Promise<void> {
   return new Promise((resolve) => {
     const frameRate = 30;
@@ -154,9 +165,8 @@ async function processImageSegment(
         return;
       }
 
-      // Throttle to target frame rate
       if (timestamp - lastFrameTime >= frameDuration) {
-        drawImageFrame(ctx, image, canvasWidth, canvasHeight, overlayImg);
+        drawImageFrame(ctx, image, canvasWidth, canvasHeight, overlayImg, fitMode);
         frameCount++;
         onProgress(frameCount / frameRate);
         lastFrameTime = timestamp;
@@ -176,7 +186,8 @@ async function processVideoSegment(
   canvasWidth: number,
   canvasHeight: number,
   overlayImg: HTMLImageElement,
-  onFrame: () => void
+  onFrame: () => void,
+  fitMode: "contain" | "fill" = "contain"
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     video.currentTime = 0;
@@ -193,9 +204,8 @@ async function processVideoSegment(
         return;
       }
 
-      // Throttle to target frame rate
       if (timestamp - lastFrameTime >= frameDuration) {
-        drawFrame(ctx, video, canvasWidth, canvasHeight, overlayImg);
+        drawFrame(ctx, video, canvasWidth, canvasHeight, overlayImg, fitMode);
         onFrame();
         lastFrameTime = timestamp;
       }
@@ -359,7 +369,7 @@ export async function mergeVideosNative(
 
   onProgress?.(60, adVideo ? "Enregistrement de la 2ème vidéo..." : "Enregistrement de l'image...");
 
-  // Process second asset (video or image) with cross overlay
+  // Process second asset (video or image) with cross overlay - stretched to fill
   if (adVideo) {
     adVideo.muted = false;
     await processVideoSegment(
@@ -368,19 +378,20 @@ export async function mergeVideosNative(
       canvasWidth,
       canvasHeight,
       crossImg,
-      () => updateProgress(adVideo.currentTime, launchVideo.duration)
+      () => updateProgress(adVideo.currentTime, launchVideo.duration),
+      "fill"
     );
     adVideo.muted = true;
   } else if (adImage) {
-    // For images, display for 5 seconds with the cross overlay
     await processImageSegment(
       adImage,
       ctx,
       canvasWidth,
       canvasHeight,
       crossImg,
-      5, // 5 seconds duration
-      (currentTime) => updateProgress(currentTime, launchVideo.duration)
+      5,
+      (currentTime) => updateProgress(currentTime, launchVideo.duration),
+      "fill"
     );
   }
 
@@ -388,9 +399,9 @@ export async function mergeVideosNative(
 
   // Draw the last frame one more time to ensure clean ending
   if (adVideo) {
-    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg);
+    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg, "fill");
   } else if (adImage) {
-    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg);
+    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg, "fill");
   }
 
   // Stop recording immediately - no delay needed
