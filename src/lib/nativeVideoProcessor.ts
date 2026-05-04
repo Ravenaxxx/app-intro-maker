@@ -165,7 +165,7 @@ async function processImageSegment(
   overlayImg: HTMLImageElement,
   durationSeconds: number,
   onProgress: (currentTime: number) => void,
-  fitMode: "contain" | "fill" = "contain"
+  fitMode: "contain" | "fill" | "width" = "contain"
 ): Promise<void> {
   return new Promise((resolve) => {
     const frameRate = 30;
@@ -202,7 +202,7 @@ async function processVideoSegment(
   canvasHeight: number,
   overlayImg: HTMLImageElement,
   onFrame: () => void,
-  fitMode: "contain" | "fill" = "contain"
+  fitMode: "contain" | "fill" | "width" = "contain"
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     video.currentTime = 0;
