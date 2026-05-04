@@ -393,7 +393,8 @@ export async function mergeVideosNative(
       canvasWidth,
       canvasHeight,
       crossImg,
-      () => updateProgress(adVideo.currentTime, launchVideo.duration)
+      () => updateProgress(adVideo.currentTime, launchVideo.duration),
+      "width"
     );
     adVideo.muted = true;
   } else if (adImage) {
@@ -404,7 +405,8 @@ export async function mergeVideosNative(
       canvasHeight,
       crossImg,
       5,
-      (currentTime) => updateProgress(currentTime, launchVideo.duration)
+      (currentTime) => updateProgress(currentTime, launchVideo.duration),
+      "width"
     );
   }
 
@@ -412,7 +414,7 @@ export async function mergeVideosNative(
 
   // Draw the last frame one more time to ensure clean ending
   if (adVideo) {
-    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg);
+    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg, "width");
   } else if (adImage) {
     drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg);
   }
