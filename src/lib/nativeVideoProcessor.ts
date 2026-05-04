@@ -106,7 +106,7 @@ function drawImageFrame(
   canvasWidth: number,
   canvasHeight: number,
   overlayImg?: HTMLImageElement,
-  fitMode: "contain" | "fill" = "contain"
+  fitMode: "contain" | "fill" | "width" = "contain"
 ) {
   // Clear canvas
   ctx.fillStyle = "#000";
@@ -114,6 +114,13 @@ function drawImageFrame(
 
   if (fitMode === "fill") {
     ctx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
+  } else if (fitMode === "width") {
+    const imageAspect = image.width / image.height;
+    const drawWidth = canvasWidth;
+    const drawHeight = canvasWidth / imageAspect;
+    const offsetX = 0;
+    const offsetY = (canvasHeight - drawHeight) / 2;
+    ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
   } else {
     const imageAspect = image.width / image.height;
     const canvasAspect = canvasWidth / canvasHeight;
