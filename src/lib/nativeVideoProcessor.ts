@@ -369,7 +369,7 @@ export async function mergeVideosNative(
 
   onProgress?.(60, adVideo ? "Enregistrement de la 2ème vidéo..." : "Enregistrement de l'image...");
 
-  // Process second asset (video or image) with cross overlay
+  // Process second asset (video or image) with cross overlay - stretched to fill
   if (adVideo) {
     adVideo.muted = false;
     await processVideoSegment(
@@ -378,19 +378,20 @@ export async function mergeVideosNative(
       canvasWidth,
       canvasHeight,
       crossImg,
-      () => updateProgress(adVideo.currentTime, launchVideo.duration)
+      () => updateProgress(adVideo.currentTime, launchVideo.duration),
+      "fill"
     );
     adVideo.muted = true;
   } else if (adImage) {
-    // For images, display for 5 seconds with the cross overlay
     await processImageSegment(
       adImage,
       ctx,
       canvasWidth,
       canvasHeight,
       crossImg,
-      5, // 5 seconds duration
-      (currentTime) => updateProgress(currentTime, launchVideo.duration)
+      5,
+      (currentTime) => updateProgress(currentTime, launchVideo.duration),
+      "fill"
     );
   }
 
@@ -398,9 +399,9 @@ export async function mergeVideosNative(
 
   // Draw the last frame one more time to ensure clean ending
   if (adVideo) {
-    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg);
+    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg, "fill");
   } else if (adImage) {
-    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg);
+    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg, "fill");
   }
 
   // Stop recording immediately - no delay needed
