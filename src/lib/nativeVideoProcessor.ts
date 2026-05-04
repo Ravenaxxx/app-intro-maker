@@ -399,9 +399,9 @@ export async function mergeVideosNative(
 
   // Draw the last frame one more time to ensure clean ending
   if (adVideo) {
-    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg, "fill");
+    drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg);
   } else if (adImage) {
-    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg, "fill");
+    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg);
   }
 
   // Stop recording immediately - no delay needed
