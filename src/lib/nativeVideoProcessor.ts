@@ -46,7 +46,7 @@ function drawFrame(
   canvasWidth: number,
   canvasHeight: number,
   overlayImg?: HTMLImageElement,
-  fitMode: "contain" | "fill" = "contain"
+  fitMode: "contain" | "fill" | "width" = "contain"
 ) {
   // Clear canvas
   ctx.fillStyle = "#000";
@@ -55,6 +55,14 @@ function drawFrame(
   if (fitMode === "fill") {
     // Stretch the asset to occupy the full canvas size
     ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+  } else if (fitMode === "width") {
+    // Fill full canvas width, preserve aspect ratio, center vertically
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const drawWidth = canvasWidth;
+    const drawHeight = canvasWidth / videoAspect;
+    const offsetX = 0;
+    const offsetY = (canvasHeight - drawHeight) / 2;
+    ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
   } else {
     // Calculate scaling to fit video in canvas while maintaining aspect ratio
     const videoAspect = video.videoWidth / video.videoHeight;
