@@ -416,7 +416,7 @@ export async function mergeVideosNative(
   if (adVideo) {
     drawFrame(ctx, adVideo, canvasWidth, canvasHeight, crossImg, "width");
   } else if (adImage) {
-    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg);
+    drawImageFrame(ctx, adImage, canvasWidth, canvasHeight, crossImg, "width");
   }
 
   // Stop recording immediately - no delay needed
