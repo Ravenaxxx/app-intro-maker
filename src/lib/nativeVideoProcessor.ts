@@ -378,8 +378,7 @@ export async function mergeVideosNative(
       canvasWidth,
       canvasHeight,
       crossImg,
-      () => updateProgress(adVideo.currentTime, launchVideo.duration),
-      "fill"
+      () => updateProgress(adVideo.currentTime, launchVideo.duration)
     );
     adVideo.muted = true;
   } else if (adImage) {
@@ -390,8 +389,7 @@ export async function mergeVideosNative(
       canvasHeight,
       crossImg,
       5,
-      (currentTime) => updateProgress(currentTime, launchVideo.duration),
-      "fill"
+      (currentTime) => updateProgress(currentTime, launchVideo.duration)
     );
   }
 
