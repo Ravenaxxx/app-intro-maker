@@ -229,6 +229,11 @@ const Index = () => {
           onRemove={() => setAdAsset(null)}
         />
 
+        {/* HTML ad tag preview */}
+        <HtmlAdPreview />
+
+
+
 
         {/* Preview & Export Section */}
         {(selectedLibraryVideo || adAsset) && (
