@@ -3,6 +3,7 @@ import { Clapperboard, Sparkles, X } from "lucide-react";
 import { UploadZone } from "@/components/UploadZone";
 import { VideoLibrary } from "@/components/VideoLibrary";
 import { AdVideoSection } from "@/components/AdVideoSection";
+import { HtmlAdPreview } from "@/components/HtmlAdPreview";
 import { VideoPreviewModal } from "@/components/VideoPreviewModal";
 import { ExportProgress } from "@/components/ExportProgress";
 import { toast } from "sonner";
@@ -228,6 +229,11 @@ const Index = () => {
           onPreview={() => adAsset && adAsset.type === "video" && setPreviewVideo({ id: adAsset.id, name: adAsset.name, url: adAsset.url })}
           onRemove={() => setAdAsset(null)}
         />
+
+        {/* HTML ad tag preview */}
+        <HtmlAdPreview />
+
+
 
 
         {/* Preview & Export Section */}
