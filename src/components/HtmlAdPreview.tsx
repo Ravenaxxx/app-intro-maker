@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
-import { Code2, Eye, Trash2, Video, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Code2, Eye, Trash2, Video, Loader2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
-import { recordHtmlAd } from "@/lib/htmlAdRecorder";
+import { recordHtmlAd, IPHONE_12_PRO } from "@/lib/htmlAdRecorder";
 
 interface HtmlAdPreviewProps {
   onCaptured?: (asset: { name: string; url: string; type: "video" }) => void;
@@ -14,9 +14,10 @@ export const HtmlAdPreview = ({ onCaptured }: HtmlAdPreviewProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [stage, setStage] = useState("");
   const frameRef = useRef<HTMLDivElement>(null);
+  const capturedFor = useRef<string>("");
 
-  const handleRecord = async () => {
-    if (!frameRef.current) return;
+  const handleRecord = useCallback(async () => {
+    if (!frameRef.current || isRecording) return;
     setIsRecording(true);
     try {
       const result = await recordHtmlAd(frameRef.current, duration, (_p, s) => {
@@ -24,12 +25,12 @@ export const HtmlAdPreview = ({ onCaptured }: HtmlAdPreviewProps) => {
       });
       const url = URL.createObjectURL(result.blob);
       onCaptured?.({
-        name: `creative-html.${result.extension}`,
+        name: `creative-html-iphone12pro.${result.extension}`,
         url,
         type: "video",
       });
       toast.success("Créa HTML capturée", {
-        description: "Elle est désormais utilisée comme asset publicitaire pour l'export.",
+        description: `${IPHONE_12_PRO.pixelWidth}×${IPHONE_12_PRO.pixelHeight} — utilisée comme asset publicitaire pour l'export.`,
       });
     } catch (error) {
       console.error("HTML ad capture failed:", error);
@@ -40,7 +41,18 @@ export const HtmlAdPreview = ({ onCaptured }: HtmlAdPreviewProps) => {
       setIsRecording(false);
       setStage("");
     }
-  };
+  }, [duration, isRecording, onCaptured]);
+
+  // Auto-start the capture as soon as the creative is displayed
+  useEffect(() => {
+    if (!rendered || capturedFor.current === rendered) return;
+    capturedFor.current = rendered;
+    const t = setTimeout(() => {
+      handleRecord();
+    }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rendered]);
 
   return (
     <section className="glass-panel rounded-2xl p-6 animate-fade-in space-y-4">
@@ -53,7 +65,8 @@ export const HtmlAdPreview = ({ onCaptured }: HtmlAdPreviewProps) => {
             Asset publicitaire via script HTML
           </h3>
           <p className="text-sm text-muted-foreground">
-            Collez un tag HTML/JS, capturez-le en vidéo puis fusionnez-le avec la vidéo de lancement
+            Collez un tag HTML/JS : la créa est affichée en format iPhone 12 Pro et capturée
+            automatiquement pour la fusion
           </p>
         </div>
       </div>
@@ -66,76 +79,93 @@ export const HtmlAdPreview = ({ onCaptured }: HtmlAdPreviewProps) => {
         className="w-full h-40 rounded-xl bg-muted/40 border border-border p-3 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-3 text-sm text-muted-foreground">
+          Durée de capture
+          <input
+            type="number"
+            min={3}
+            max={30}
+            value={duration}
+            onChange={(e) =>
+              setDuration(Math.min(30, Math.max(3, Number(e.target.value) || 3)))
+            }
+            className="w-20 rounded-lg bg-muted/40 border border-border px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <span>s (3–30)</span>
+        </label>
+
         <button
-          onClick={() => setRendered(code)}
-          disabled={!code.trim()}
+          onClick={() => {
+            capturedFor.current = "";
+            setRendered(code);
+          }}
+          disabled={!code.trim() || isRecording}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground text-sm font-medium disabled:opacity-40 transition-opacity"
         >
-          <Eye className="w-4 h-4" />
-          Afficher l'aperçu
+          {isRecording ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Eye className="w-4 h-4" />
+          )}
+          {isRecording ? stage || "Capture..." : "Afficher et capturer"}
         </button>
-        {rendered && (
-          <button
-            onClick={() => setRendered("")}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            Réinitialiser
-          </button>
+
+        {rendered && !isRecording && (
+          <>
+            <button
+              onClick={handleRecord}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-foreground hover:border-primary transition-colors"
+            >
+              <Video className="w-4 h-4" />
+              Recapturer
+            </button>
+            <button
+              onClick={() => {
+                capturedFor.current = "";
+                setRendered("");
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Réinitialiser
+            </button>
+          </>
         )}
       </div>
 
       {rendered && (
-        <>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Smartphone className="w-4 h-4" />
+            iPhone 12 Pro — {IPHONE_12_PRO.cssWidth}×{IPHONE_12_PRO.cssHeight} pt (
+            {IPHONE_12_PRO.pixelWidth}×{IPHONE_12_PRO.pixelHeight} px)
+          </div>
+
           <div
             ref={frameRef}
-            className="rounded-xl overflow-hidden border border-border bg-background"
+            className="rounded-[2rem] overflow-hidden border border-border bg-white mx-auto"
+            style={{
+              width: IPHONE_12_PRO.cssWidth,
+              height: IPHONE_12_PRO.cssHeight,
+            }}
           >
             <iframe
               key={rendered}
               title="Aperçu de l'asset publicitaire HTML"
               sandbox="allow-scripts allow-popups allow-same-origin"
-              srcDoc={`<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#fff;font-family:sans-serif}</style></head><body>${rendered}</body></html>`}
-              className="w-full h-[400px] bg-white"
+              width={IPHONE_12_PRO.cssWidth}
+              height={IPHONE_12_PRO.cssHeight}
+              srcDoc={`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=${IPHONE_12_PRO.cssWidth},initial-scale=1"><style>html,body{margin:0;padding:0;width:${IPHONE_12_PRO.cssWidth}px;height:${IPHONE_12_PRO.cssHeight}px;overflow:hidden;background:#fff;font-family:-apple-system,sans-serif}</style></head><body>${rendered}</body></html>`}
+              className="block bg-white border-0"
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-3 text-sm text-muted-foreground">
-              Durée de capture
-              <input
-                type="number"
-                min={3}
-                max={30}
-                value={duration}
-                onChange={(e) =>
-                  setDuration(Math.min(30, Math.max(3, Number(e.target.value) || 3)))
-                }
-                className="w-20 rounded-lg bg-muted/40 border border-border px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-              <span>s (3–30)</span>
-            </label>
-
-            <button
-              onClick={handleRecord}
-              disabled={isRecording}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground text-sm font-medium disabled:opacity-40 transition-opacity"
-            >
-              {isRecording ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Video className="w-4 h-4" />
-              )}
-              {isRecording ? stage || "Capture..." : "Capturer en vidéo et utiliser pour l'export"}
-            </button>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            À la demande d'autorisation, sélectionnez cet onglet : la créa est enregistrée en vidéo,
-            puis fusionnée après la vidéo de lancement (croix incluse).
+          <p className="text-xs text-muted-foreground text-center">
+            À la demande d'autorisation, sélectionnez cet onglet : la créa est enregistrée
+            automatiquement puis fusionnée après la vidéo de lancement (croix incluse).
           </p>
-        </>
+        </div>
       )}
     </section>
   );
