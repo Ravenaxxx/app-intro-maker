@@ -231,7 +231,11 @@ const Index = () => {
         />
 
         {/* HTML ad tag preview */}
-        <HtmlAdPreview />
+        <HtmlAdPreview
+          onCaptured={(asset) =>
+            setAdAsset({ id: crypto.randomUUID(), ...asset })
+          }
+        />
 
 
 
